@@ -11,6 +11,7 @@ from PIL import Image
 # TODO: Training wastes 72% of time doing transforms while calling __getitem___,
 # and less than 5% doing a forward pass. This obviously needs to be improved.
 
+
 class FixedCIFAR10(CIFAR10):
     """
     CIFAR dataset with custom `__getitem__` method that allows for slice indexing,
@@ -48,7 +49,7 @@ class FixedCIFAR100(CIFAR100):
         transform: Callable[..., Any] | None = None,
         target_transform: Callable[..., Any] | None = None,
         download: bool = False,
-        device=None
+        device=None,
     ) -> None:
         # Initialization does not need to be changed
         super().__init__(root, train, transform, target_transform, download)

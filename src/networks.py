@@ -11,6 +11,7 @@ from torch import Tensor
 import torch.nn as nn
 from torchvision import transforms
 
+
 class ConvSandwich(nn.Module):
     """Helper class to create a convolutional layer and related layers"""
 
@@ -28,7 +29,9 @@ class ConvSandwich(nn.Module):
 
         self.sandwich = nn.Sequential(
             nn.Conv2d(
-                in_channels=hparams["img_shape"][0] if not in_channels else in_channels,
+                in_channels=(
+                    hparams["img_shape"][0] if not in_channels else in_channels
+                ),
                 out_channels=hparams["net_width"],
                 kernel_size=hparams["kernel_size"],
                 padding=hparams["padding"],
@@ -75,14 +78,12 @@ def weights_init(m: nn.Module):
     elif isinstance(m, nn.Linear):
         torch.nn.init.kaiming_uniform_(m.weight, nonlinearity="relu")
 
+
 class ConvNet(nn.Module):
     def __init__(self, hparams) -> None:
         super().__init__()
 
         self.hp = hparams
-        kernel_size = self.hp[
-            "kernel_size"
-        ]  # Dimensions of each kernel, used to calculate input shapes of layers
 
         self.features = nn.Sequential(
             ConvSandwich(self.hp),
@@ -131,7 +132,9 @@ class ConvNet(nn.Module):
                 weight_decay=self.hp["weight_decay"],
             )
         else:
-            raise ValueError(f"Unexpected Optimizer chosen: {self.hp["optimizer"]}")
+            raise ValueError(
+                f"Unexpected Optimizer chosen: {self.hp["optimizer"]}"
+            )
 
     def training_step(self, batch, loss_func):
         self.train()  # Set model to training mode
@@ -142,7 +145,9 @@ class ConvNet(nn.Module):
         target = batch[1].to(self.device)
 
         # Model makes prediction (forward pass)
-        pred = self.forward(images)  # N x C x H x W (C = num of labels of dataset)
+        pred = self.forward(
+            images
+        )  # N x C x H x W (C = num of labels of dataset)
 
         # Calculate loss, do backward pass to update weights, optimizer takes step
         # torch.nn.CrossEntropyLoss(ignore_index=0, reduction="mean") wants target to be of type long, not float

@@ -17,33 +17,41 @@ from torchvision import transforms
 from torchinfo import summary
 from torch.profiler import profile, record_function, ProfilerActivity
 
-from util import print_line, logger, set_device, create_tqdm_bar
+from util import print_line, init_logger, set_device, create_tqdm_bar
 from datasets import FixedCIFAR10, load_datasets, dataset_info
 from networks import ConvNet
 
 
-def train_model(
-    model,
+def train_expert_model(
+    hparams,
     train_loader,
     val_loader,
-    loss_func,
     tb_logger,
-    epochs=3,
     name="mtt-expert",
-    debug=False,  # Used for debugging
+    pt_profiler=False,  # Used for debugging, PyTorch Profiler
 ):
+
+    # Create new model and move to device
+    model = ConvNet(hparams=hparams).to(hparams["device"])
+    loss_func = torch.nn.CrossEntropyLoss().to(model.device)
+    epochs = hparams["epochs"]
 
     # In MTT paper they cut LR to 1/10th halfway through training
     scheduler = torch.optim.lr_scheduler.StepLR(
         model.optimizer, step_size=epochs * len(train_loader) // 2, gamma=0.1
     )
 
-    if debug:
+    if pt_profiler:
         with profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
             with_stack=True,
         ) as prof:
-            inputs = torch.randn(256, 3, 32, 32).cuda()
+            inputs = torch.randn(
+                model.hp["batch_size"],
+                model.hp["img_shape"][0],
+                model.hp["img_shape"][1],
+                model.hp["img_shape"][2],
+            ).cuda()
             model(inputs)
 
         print(
@@ -77,8 +85,20 @@ def train_model(
                 )
 
 
+def train_many_experts(hparams, train_loader, test_loader, tb_logger):
+    for it in range(hparams["experts"]):
+        print(f"Training Expert {it}")
+        train_expert_model(
+            hparams,
+            train_loader,
+            None,
+            tb_logger,
+            name="mtt-expert",
+        )
+
+
 def main():
-    project_name = "mtt-expert"
+    project_name = "mtt-experts"
 
     print(
         """Script for generating expert trajectories for Dataset Distillation
@@ -104,17 +124,17 @@ def main():
     # and are added by load_datasets)
     hparams: dict[str, Any] = {
         "device": device,
-        "num_workers": 16,
-        "epochs": 2,
-        "batch_size": 256,
-        "max_patience": 3,
-        "learning_rate": 0.01,
-        "weight_decay": 0.0,
-        "momentum": 0.0,
+        "num_workers": 16,  # CPU workers used by PyTorch
+        "experts": 3,  # How many expert models to train
+        "epochs": 2,  # Epochs per expert model
+        "batch_size": 256,  # Batch size
+        "learning_rate": 0.01,  # LR for optimizer
+        "weight_decay": 0.0,  # Weight decay used by optimizer
+        "momentum": 0.0,  # Momentum used by optimizer
         "net_depth": 3,  # Number of Conv layers (excluding helper layers and additional linear layer)
         "net_width": 128,  # Number of kernels in each Conv layer
         "kernel_size": 3,  # Dimensions of the kernels (H * W)
-        "padding": 1,  # Conv layer padding
+        "padding": 1,  # Conv layer padding pixels
         "activation": nn.ReLU(inplace=True),  # Activation function
         "norm": nn.GroupNorm(
             num_groups=128, num_channels=128, affine=True
@@ -151,16 +171,15 @@ def main():
     # It is best to initialize TensorBoard as late as possible, because it interferes with
     # other processes trying to print to the CLI
     print("Starting up TensorBoard")
-    tb_process = logger(
-        f"logs/{project_name}/"
-    )
+    tb_process = init_logger(f"logs/{project_name}/")
     print(
         "Note that Tensorboard will continue running even when the script has ended, this does not mean the script is hanging"
     )
     print_line()
 
-    # Create new model and move to device
-    model = ConvNet(hparams=hparams).to(device)
+    # Training begins before TensorBoard process is loaded, buffered text prints
+    # where it isn't supposed to. This sleep stops that from happening, hacky way to do it.
+    time.sleep(2)
 
     # Create the tb_logger, project_name needed for TensorBoard to find the logs and display them
     path = os.path.join("logs", project_name)
@@ -168,41 +187,30 @@ def main():
     path = os.path.join(path, f"run_{num_of_runs + 1}")
     tb_logger = SummaryWriter(path)
 
-    # Train the model
+    # DataLoaders
     train_loader = DataLoader(
         train_dataset, batch_size=hparams["batch_size"], shuffle=True
     )
-    test_loader = DataLoader(
-        test_dataset, batch_size=128, shuffle=False
-    )  # Note that batch size is fixed for test dataset in MTT repo
-
-    epochs = hparams.get("epochs", 5)
-    loss_func = torch.nn.CrossEntropyLoss().to(model.device)
+    # Note that batch size is fixed for test dataset in MTT repo
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
 
     if settings["debug"]:
         print("Running the model in debug mode")
         with Profile() as profile:
-            train_model(
-                model,
+            # Only profile a single model run
+            train_expert_model(
+                hparams,
                 train_loader,
                 None,
-                loss_func,
                 tb_logger,
-                epochs=epochs,
-                name="mtt-expert",
-                debug=False,
+                name=project_name,
+                pt_profiler=False,  # Additional flag to show PyTorch profiler
             )
-            Stats(profile).strip_dirs().sort_stats(SortKey.CUMULATIVE).print_stats()
+            Stats(profile).strip_dirs().sort_stats(
+                SortKey.CUMULATIVE
+            ).print_stats()
     else:
-        train_model(
-            model,
-            train_loader,
-            None,
-            loss_func,
-            tb_logger,
-            epochs=epochs,
-            name="mtt-expert",
-        )
+        train_many_experts(hparams, train_loader, test_loader, tb_logger)
 
     # Keep the script running to keep TensorBoard alive
     print(

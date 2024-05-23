@@ -29,15 +29,29 @@ def visualize_imgs(images: Tensor | List[Tensor]) -> None:
 
 
 def print_line(newline=True):
+    """Helper Function that simply prints a straight line to the CLI. Optionally prints
+    an empty line before the straight line
+
+    Args:
+        newline (bool, optional): Add empty line before straight line. Defaults to True.
+    """
+
     if newline:
         print("\n")
     print("-" * 80)
 
 
-def logger(log_dir) -> subprocess.Popen[bytes]:
-    tb_process = subprocess.Popen(
-        ["tensorboard", "--logdir", log_dir]
-    )
+def init_logger(log_dir) -> subprocess.Popen[bytes]:
+    """Initialize TensorBoard logger
+
+    Args:
+        log_dir (Path): Path to where logger should read from
+
+    Returns:
+        subprocess.Popen[bytes]: Returns the logger process, so it can be terminated later by the user
+    """
+
+    tb_process = subprocess.Popen(["tensorboard", "--logdir", log_dir])
     print(
         f"TensorBoard started at http://localhost:6006/ (or the port specified in the terminal)"
     ),
