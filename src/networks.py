@@ -136,40 +136,40 @@ class ConvNet(nn.Module):
                 f"Unexpected Optimizer chosen: {self.hp["optimizer"]}"
             )
 
-    def training_step(self, batch, loss_func):
-        self.train()  # Set model to training mode
-        self.optimizer.zero_grad()  # Reset gradient every batch
+    def step(self, batch, loss_func, mode):
+
+        # TODO: Constantly checking mode every batch may result in slowdown
+        if mode == "train":
+            self.train()  # Set model to training mode
+        else:
+            self.eval()  # Set model to evaluation mode
 
         # N = batch size, C = channels (3 for RGB), H = image height, W = image width
         images = batch[0].to(self.device)  # Input batch, N x C x H x W
         target = batch[1].to(self.device)
 
-        # Model makes prediction (forward pass)
-        pred = self.forward(
-            images
-        )  # N x C x H x W (C = num of labels of dataset)
+        # Model makes prediction (forward pass) N x C x H x W (C = num of labels of dataset)
+        pred = self.forward(images)
 
         # Calculate loss, do backward pass to update weights, optimizer takes step
         # torch.nn.CrossEntropyLoss(ignore_index=0, reduction="mean") wants target to be of type long, not float
         loss = loss_func(pred, target)
-        loss.backward()
-        self.optimizer.step()
 
-        return loss
+        # Backpropagation only during training
+        if mode == "train":
+            self.optimizer.zero_grad()  # Reset gradient every batch
+            loss.backward()
+            self.optimizer.step()
 
-    # def validation_step(self, batch, loss_func):
-    #     loss = 0
+        # Calculate accuracy: filters for most likely prediction for each image in batch, and compares to
+        # the ground truth (target) vector. For each correct pair, returns True/1, which is then
+        # summed up. Thus acc is in range 0-size of batch, which is then normzlied based on batch size
+        acc = np.sum(
+            np.equal(
+                np.argmax(pred.cpu().data.numpy(), axis=-1),
+                target.cpu().data.numpy(),
+            )
+        )
+        acc /= batch[0].shape[0]
 
-    #     # Set model to eval
-    #     self.eval()
-
-    #     with torch.no_grad():
-    #         images = batch[0].to(self.device)  # Input batch, N x C x H x W
-    #         target = (
-    #             batch[1][0].to(self.device).squeeze()
-    #         )  # Ground truth, each pixel assigned an ID int. N x H x W
-
-    #         pred = self.forward(images)
-    #         loss = loss_func(pred, target)
-
-    #     return loss
+        return loss, acc

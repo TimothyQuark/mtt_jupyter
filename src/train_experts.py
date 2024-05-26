@@ -4,7 +4,7 @@ import datetime
 import time
 from cProfile import Profile
 from pstats import SortKey, Stats
-from typing import Any, Callable, Tuple, Dict, List, Optional, Union
+from typing import Any, Callable, Iterator, Tuple, Dict, List, Optional, Union
 import pprint
 from pathlib import Path
 import numpy as np
@@ -25,11 +25,19 @@ from networks import ConvNet
 def train_expert_model(
     hparams,
     train_loader,
-    val_loader,
-    tb_logger,
-    name="mtt-expert",
+    test_loader,
+    log_path,
+    name,
     pt_profiler=False,  # Used for debugging, PyTorch Profiler
-):
+) -> List[Iterator[nn.Parameter]]:
+
+    # Place expert logs in subdirectory of the current run, create new summary writer
+    current_expert = (
+        len(os.listdir(log_path)) if os.path.exists(log_path) else 0
+    ) + 1
+    log_path = os.path.join(log_path, f"expert_{current_expert}")
+    tb_logger = SummaryWriter(log_path)
+    print(f"Training Expert {current_expert}")
 
     # Create new model and move to device
     model = ConvNet(hparams=hparams).to(hparams["device"])
@@ -41,6 +49,7 @@ def train_expert_model(
         model.optimizer, step_size=epochs * len(train_loader) // 2, gamma=0.1
     )
 
+    # Profiling for debugging performance
     if pt_profiler:
         with profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -58,43 +67,157 @@ def train_expert_model(
             prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
         )
     else:
+
+        # Snapshots of model parameters, that will be used by _____
+        timestamps = []
+
+        # Take snapshot before training begins, unsure why MTT does this
+        timestamps.append([p.detach().cpu() for p in model.parameters()])
+
         for epoch in range(epochs):
 
             # Training
+            # Running total loss and accuracy for an epoch (will be averaged out)
+            train_loss = 0
+            train_acc = 0
+
+            # Training iterator (note epoch here has 1 added to it for user clarity)
             training_loop = create_tqdm_bar(
-                train_loader, desc=f"Training Epoch [{epoch + 1}/{epochs}]"
+                train_loader, desc=f"Train Epoch [{epoch + 1}/{epochs}]"
             )
-            training_loss = 0
 
             for train_iter, batch in training_loop:
-                loss = model.training_step(batch, loss_func)
-                training_loss += loss.item()
+                loss, acc = model.step(batch, loss_func, "train")
+                train_loss += loss.item()
+                train_acc += acc
+                # Running average of loss and accuracy during epoch (+1 so no zero division)
+                avg_loss = train_loss / (train_iter + 1)
+                avg_acc = train_acc / (train_iter + 1)
+
                 scheduler.step()
 
                 # Update progress bar
                 training_loop.set_postfix(
-                    train_loss="{:.8f}".format(
-                        training_loss / (train_iter + 1)
-                    ),
+                    acc="{:.8f}".format(avg_acc),
+                    loss="{:.8f}".format(avg_loss),
                     lr="{:.8f}".format(model.optimizer.param_groups[0]["lr"]),
                 )
                 tb_logger.add_scalar(
-                    f"{name}/train_loss",
+                    f"{name}/batch_loss",
                     loss.item(),
                     epoch * len(train_loader) + train_iter,
                 )
+                tb_logger.add_scalar(
+                    f"{name}/batch_accuracy",
+                    acc,
+                    epoch * len(train_loader) + train_iter,
+                )
+
+            # Testing
+            # Running total loss and accuracy for an epoch (will be averaged out)
+            test_loss = 0
+            test_acc = 0
+
+            # Testing iterator (note epoch here has 1 added to it for user clarity)
+            testing_loop = create_tqdm_bar(
+                train_loader, desc=f"Test Epoch [{epoch + 1}/{epochs}]"
+            )
+
+            for train_iter, batch in testing_loop:
+                loss, acc = model.step(batch, loss_func, "test")
+                test_loss += loss.item()
+                test_acc += acc
+                # Running average of loss and accuracy during epoch (+1 so no zero division)
+                avg_loss = test_loss / (train_iter + 1)
+                avg_acc = test_acc / (train_iter + 1)
+
+                # Update progress bar
+                testing_loop.set_postfix(
+                    acc="{:.8f}".format(avg_acc),
+                    loss="{:.8f}".format(avg_loss),
+                    lr="{:.8f}".format(model.optimizer.param_groups[0]["lr"]),
+                )
+                tb_logger.add_scalar(
+                    f"{name}/batch_loss",
+                    loss.item(),
+                    epoch * len(train_loader) + train_iter,
+                )
+                tb_logger.add_scalar(
+                    f"{name}/batch_accuracy",
+                    acc,
+                    epoch * len(train_loader) + train_iter,
+                )
+
+            # At end of every epoch, take snapshot of model parameters
+            timestamps.append([p.detach().cpu() for p in model.parameters()])
+
+        # Only return timestamps if not in debug mode
+        return timestamps
+
+    # For the first expert, save the model graph to visualize
+    if current_expert == 1:
+        # Make a graph of the model in TensorBoard
+        model.eval()
+        tb_logger.add_graph(
+            model,
+            torch.randn(
+                model.hp["batch_size"],
+                model.hp["img_shape"][0],
+                model.hp["img_shape"][1],
+                model.hp["img_shape"][2],
+            ).cuda(),
+        )
 
 
-def train_many_experts(hparams, train_loader, test_loader, tb_logger):
+def train_many_experts(hparams, train_loader, test_loader, project_name):
+
+    # TODO: Check that expert data and log files are same length, else can conflict
+
+    # Create the tb_logger, current_run is based on what is inside the log files
+    log_path = os.path.join("logs", project_name)
+    current_run = (
+        len(os.listdir(log_path)) if os.path.exists(log_path) else 0
+    ) + 1
+    log_path = os.path.join(log_path, f"run_{current_run}")
+    print(f"Executing run {current_run}")
+
+    save_intervals = hparams["save_interval"]
+
+    # A list of lists of model parameters
+    expert_trajectories: List[List[Iterator[nn.Parameter]]] = []
+
     for it in range(hparams["experts"]):
-        print(f"Training Expert {it}")
-        train_expert_model(
-            hparams,
-            train_loader,
-            None,
-            tb_logger,
+        timestamps = train_expert_model(
+            hparams=hparams,
+            train_loader=train_loader,
+            test_loader=test_loader,
+            log_path=log_path,
             name="mtt-expert",
         )
+
+        if not ((it + 1) % save_intervals):
+            expert_path = os.path.join("data", "experts", project_name)
+            expert_path = os.path.join(expert_path, f"run_{current_run}")
+            if not os.path.exists(expert_path):
+                os.makedirs(expert_path)
+            current_buffer = (
+                len(os.listdir(expert_path))
+                if os.path.exists(expert_path)
+                else 0
+            ) + 1
+            print(f"Saving replay_buffer_{current_buffer}")
+            torch.save(
+                expert_trajectories,
+                os.path.join(expert_path, f"replay_buffer_{current_buffer}.pt"),
+            )
+            # Reset expert trajectories list
+            expert_trajectories = []
+
+    expert_trajectories.append(timestamps)
+
+
+def save_experts():
+    pass
 
 
 def main():
@@ -125,8 +248,9 @@ def main():
     hparams: dict[str, Any] = {
         "device": device,
         "num_workers": 16,  # CPU workers used by PyTorch
-        "experts": 3,  # How many expert models to train
-        "epochs": 2,  # Epochs per expert model
+        "save_interval": 2,  # How many expert trajectories are saved in each file
+        "experts": 4,  # How many expert models to train
+        "epochs": 1,  # Epochs per expert model
         "batch_size": 256,  # Batch size
         "learning_rate": 0.01,  # LR for optimizer
         "weight_decay": 0.0,  # Weight decay used by optimizer
@@ -175,17 +299,14 @@ def main():
     print(
         "Note that Tensorboard will continue running even when the script has ended, this does not mean the script is hanging"
     )
+    print(
+        "Also note that if you have TensorFlow installed but not the CUDA Toolkit, you may get warnings that CUDA is not enabled, this does not apply to PyTorch!"
+    )
     print_line()
 
     # Training begins before TensorBoard process is loaded, buffered text prints
     # where it isn't supposed to. This sleep stops that from happening, hacky way to do it.
     time.sleep(2)
-
-    # Create the tb_logger, project_name needed for TensorBoard to find the logs and display them
-    path = os.path.join("logs", project_name)
-    num_of_runs = len(os.listdir(path)) if os.path.exists(path) else 0
-    path = os.path.join(path, f"run_{num_of_runs + 1}")
-    tb_logger = SummaryWriter(path)
 
     # DataLoaders
     train_loader = DataLoader(
@@ -201,8 +322,8 @@ def main():
             train_expert_model(
                 hparams,
                 train_loader,
-                None,
-                tb_logger,
+                test_loader,
+                "logs/debug",
                 name=project_name,
                 pt_profiler=False,  # Additional flag to show PyTorch profiler
             )
@@ -210,7 +331,7 @@ def main():
                 SortKey.CUMULATIVE
             ).print_stats()
     else:
-        train_many_experts(hparams, train_loader, test_loader, tb_logger)
+        train_many_experts(hparams, train_loader, test_loader, project_name)
 
     # Keep the script running to keep TensorBoard alive
     print(
