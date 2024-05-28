@@ -203,6 +203,8 @@ def train_many_experts(
             name="mtt-expert",
         )
 
+        expert_trajectories.append(timestamps)
+
         if not ((it + 1) % save_intervals):
             expert_path = os.path.join("data", "experts", project_name)
             expert_path = os.path.join(expert_path, f"run_{current_run}")
@@ -220,8 +222,6 @@ def train_many_experts(
             )
             # Reset expert trajectories list
             expert_trajectories = []
-
-    expert_trajectories.append(timestamps)
 
 
 def save_experts():
@@ -256,9 +256,9 @@ def main():
     # Hyperparameters (note that some hparams are defined by the dataset used,
     # and are added by load_datasets)
     hparams: dict[str, Any] = {
-        "save_interval": 2,  # How many expert trajectories are saved in each file
-        "experts": 4,  # How many expert models to train
-        "epochs": 1,  # Epochs per expert model
+        "save_interval": 10,  # How many expert trajectories are saved in each file
+        "experts": 10,  # How many expert models to train
+        "epochs": 50,  # Epochs per expert model
         "batch_size": 256,  # Batch size
         "learning_rate": 0.01,  # LR for optimizer
         "weight_decay": 0.0,  # Weight decay used by optimizer

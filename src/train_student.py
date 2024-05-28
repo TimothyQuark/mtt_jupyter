@@ -26,21 +26,20 @@ if __name__ == "__main__":
 
     # User settings:
     settings: dict[str, Any] = {
+        "device": device,
+        "num_workers": 16,  # CPU workers used by PyTorch, this will immensely speed up training (good estimate is number of CPU threads)
         "dataset": "CIFAR100",  # [CIFAR10, CIFAR100]
         "model": "ConvNet",  # [ConvNet, ResNet]
         "ZCA": False,  # [True, False]
-        "expert_folder": "run_100",  # Name of folder to take expert models from
         "debug": False,  # [True, False]
     }
 
     # Hyperparameters (note that some hparams are defined by the dataset used,
     # and are added by load_datasets)
     hparams: dict[str, Any] = {
-        "device": device,
-        "num_workers": 16,  # CPU workers used by PyTorch
+        "images_per_class" : 1, # Number of synthetic images to generate per class
         "epochs": 1,  # Epochs per expert model
         "batch_size": 256,  # Batch size
-        "images_per_class" : 1, # Number of synthetic images to generate per class
         "learning_rate": 0.01,  # LR for optimizer
         "weight_decay": 0.0,  # Weight decay used by optimizer
         "momentum": 0.0,  # Momentum used by optimizer
