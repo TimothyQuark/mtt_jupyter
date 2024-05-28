@@ -80,7 +80,7 @@ def weights_init(m: nn.Module):
 
 
 class ConvNet(nn.Module):
-    def __init__(self, hparams) -> None:
+    def __init__(self, hparams, settings) -> None:
         super().__init__()
 
         self.hp = hparams
@@ -103,7 +103,7 @@ class ConvNet(nn.Module):
         )
 
         # We want the model to be stored on GPU if possible
-        self.device = hparams["device"]
+        self.device = settings["device"]
 
         self.set_optimizer()
 

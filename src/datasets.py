@@ -10,12 +10,13 @@ from PIL import Image
 
 # TODO: Training wastes 72% of time doing transforms while calling __getitem___,
 # and less than 5% doing a forward pass. This obviously needs to be improved.
+# Actually, using more DataLoader workers will solve this problem smartly, the
+# MTT authors seem to have forgotten to do this for CIFAR, only did it for ImageNet
 
 
 class FixedCIFAR10(CIFAR10):
     """
-    CIFAR dataset with custom `__getitem__` method that allows for slice indexing,
-    and also appends important hyperparameters to the hparams dict
+    CIFAR dataset with custom `__getitem__` method that allows for slice indexing
     """
 
     def __init__(
@@ -40,7 +41,9 @@ class FixedCIFAR10(CIFAR10):
 
 
 class FixedCIFAR100(CIFAR100):
-    """CIFAR dataset with custom `__getitem__` method that allows for slice indexing"""
+    """
+    CIFAR dataset with custom `__getitem__` method that allows for slice indexing
+    """
 
     def __init__(
         self,
@@ -66,6 +69,16 @@ class FixedCIFAR100(CIFAR100):
 
 
 def load_datasets(settings, hparams):
+    """Dataset loader that prepares the dataset, as well as appending the hyperparameters dict
+    to include relevant parameters that depend on the dataset (e.g. output channels)
+
+    Args:
+        settings (dict): User settings
+        hparams (dict): Hyper parameters, this function will append this dict with additional parameters
+
+    Returns:
+        train_dataset, test_dataset, hparams
+    """
     if settings["dataset"] == "CIFAR10":
         if settings["ZCA"]:
             raise NotImplementedError("ZCA not yet implemented")
@@ -123,7 +136,7 @@ def load_datasets(settings, hparams):
             train=True,
             download=True,
             transform=transform,
-            device=hparams["device"],
+            device=settings["device"],
         )
 
         print(f"Loading testing dataset ({settings["dataset"]})")
@@ -132,7 +145,7 @@ def load_datasets(settings, hparams):
             train=False,
             download=True,
             transform=transform,
-            device=hparams["device"],
+            device=settings["device"],
         )
 
         print("Appending hparams with additional parameters")

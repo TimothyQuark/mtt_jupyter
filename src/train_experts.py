@@ -6,10 +6,8 @@ from cProfile import Profile
 from pstats import SortKey, Stats
 from typing import Any, Callable, Iterator, Tuple, Dict, List, Optional, Union
 import pprint
-from pathlib import Path
 import numpy as np
 import torch
-from torch import Tensor
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -18,12 +16,19 @@ from torchinfo import summary
 from torch.profiler import profile, record_function, ProfilerActivity
 
 from util import print_line, init_logger, set_device, create_tqdm_bar
-from datasets import FixedCIFAR10, load_datasets, dataset_info
+from datasets import load_datasets, dataset_info
 from networks import ConvNet
+
+
+"""
+This file is used to train the expert models that will be used for MTT. Hyper parameters can
+be set towards the end of the file.
+"""
 
 
 def train_expert_model(
     hparams,
+    settings,
     train_loader,
     test_loader,
     log_path,
@@ -40,7 +45,7 @@ def train_expert_model(
     print(f"Training Expert {current_expert}")
 
     # Create new model and move to device
-    model = ConvNet(hparams=hparams).to(hparams["device"])
+    model = ConvNet(hparams=hparams, settings=settings).to(settings["device"])
     loss_func = torch.nn.CrossEntropyLoss().to(model.device)
     epochs = hparams["epochs"]
 
@@ -169,7 +174,9 @@ def train_expert_model(
         )
 
 
-def train_many_experts(hparams, train_loader, test_loader, project_name):
+def train_many_experts(
+    hparams, settings, train_loader, test_loader, project_name
+):
 
     # TODO: Check that expert data and log files are same length, else can conflict
 
@@ -189,6 +196,7 @@ def train_many_experts(hparams, train_loader, test_loader, project_name):
     for it in range(hparams["experts"]):
         timestamps = train_expert_model(
             hparams=hparams,
+            settings=settings,
             train_loader=train_loader,
             test_loader=test_loader,
             log_path=log_path,
@@ -237,6 +245,8 @@ def main():
 
     # User settings:
     settings: dict[str, Any] = {
+        "device": device,
+        "num_workers": 16,  # CPU workers used by PyTorch, this will immensely speed up training (good estimate is number of CPU threads)
         "dataset": "CIFAR100",  # [CIFAR10, CIFAR100]
         "model": "ConvNet",  # [ConvNet, ResNet]
         "ZCA": False,  # [True, False]
@@ -246,8 +256,6 @@ def main():
     # Hyperparameters (note that some hparams are defined by the dataset used,
     # and are added by load_datasets)
     hparams: dict[str, Any] = {
-        "device": device,
-        "num_workers": 16,  # CPU workers used by PyTorch
         "save_interval": 2,  # How many expert trajectories are saved in each file
         "experts": 4,  # How many expert models to train
         "epochs": 1,  # Epochs per expert model
@@ -277,7 +285,7 @@ def main():
     pprint.pprint(hparams)
     print_line()
 
-    model = ConvNet(hparams=hparams)
+    model = ConvNet(hparams=hparams, settings=settings)
     print("Summary of model (for provided hyperparameters)")
     # Depth needs to be set higher than default to open up Sequential module
     summary(
@@ -310,20 +318,29 @@ def main():
 
     # DataLoaders
     train_loader = DataLoader(
-        train_dataset, batch_size=hparams["batch_size"], shuffle=True
+        train_dataset,
+        batch_size=hparams["batch_size"],
+        shuffle=True,
+        num_workers=settings["num_workers"],
     )
     # Note that batch size is fixed for test dataset in MTT repo
-    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=128,
+        shuffle=False,
+        num_workers=settings["num_workers"],
+    )
 
     if settings["debug"]:
         print("Running the model in debug mode")
         with Profile() as profile:
             # Only profile a single model run
             train_expert_model(
-                hparams,
-                train_loader,
-                test_loader,
-                "logs/debug",
+                hparams=hparams,
+                settings=settings,
+                train_loader=train_loader,
+                test_loader=train_loader,
+                log_path="logs/debug",
                 name=project_name,
                 pt_profiler=False,  # Additional flag to show PyTorch profiler
             )
@@ -331,7 +348,13 @@ def main():
                 SortKey.CUMULATIVE
             ).print_stats()
     else:
-        train_many_experts(hparams, train_loader, test_loader, project_name)
+        train_many_experts(
+            hparams=hparams,
+            settings=settings,
+            train_loader=train_loader,
+            test_loader=test_loader,
+            project_name=project_name,
+        )
 
     # Keep the script running to keep TensorBoard alive
     print(
