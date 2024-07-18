@@ -1,0 +1,259 @@
+digraph {
+	graph [size="19.05,19.05"]
+	node [align=left fontname=monospace fontsize=10 height=0.2 ranksep=0.1 shape=box style=filled]
+	140700236432480 [label="
+ ()" fillcolor=darkolivegreen1]
+	140699821341472 [label="DivBackward0
+---------------------
+other: [saved tensor]
+self :           None"]
+	140699821330240 -> 140699821341472
+	140699821330240 [label="MseLossBackward0
+-------------------------
+reduction:              2
+self     : [saved tensor]
+target   : [saved tensor]"]
+	140699821327840 -> 140699821330240
+	140699821327840 [label="SubBackward0
+------------
+alpha: 1"]
+	140699821330672 -> 140699821327840
+	140699821330672 [label="CatBackward0
+------------
+dim: 0"]
+	140699821336048 -> 140699821330672
+	140699821336048 [label="ViewBackward0
+----------------------
+self_sym_sizes: (4, 3)"]
+	140699821331248 -> 140699821336048
+	140699810032416 [label="
+ (4, 3)" fillcolor=lightblue]
+	140699810032416 -> 140699821331248
+	140699821331248 [label=AccumulateGrad]
+	140699821335808 -> 140699821330672
+	140699821335808 [label="ViewBackward0
+----------------------
+self_sym_sizes: (8, 4)"]
+	140699821335664 -> 140699821335808
+	140699810032816 [label="
+ (8, 4)" fillcolor=lightblue]
+	140699810032816 -> 140699821335664
+	140699821335664 [label=AccumulateGrad]
+	140699821333168 -> 140699821330672
+	140699821333168 [label="ViewBackward0
+----------------------
+self_sym_sizes: (5, 8)"]
+	140699821335760 -> 140699821333168
+	140699820822992 [label="
+ (5, 8)" fillcolor=lightblue]
+	140699820822992 -> 140699821335760
+	140699821335760 [label=AccumulateGrad]
+	140699821333888 -> 140699821327840
+	140699821333888 [label="MulBackward0
+---------------------
+other: [saved tensor]
+self :           None"]
+	140699821335136 -> 140699821333888
+	140699821335136 [label="CatBackward0
+------------
+dim: 0"]
+	140699821334176 -> 140699821335136
+	140699821334176 [label="ViewBackward0
+----------------------
+self_sym_sizes: (4, 3)"]
+	140699821335520 -> 140699821334176
+	140699821335520 [label=TBackward0]
+	140699821331488 -> 140699821335520
+	140699821331488 [label=TBackward0]
+	140699821328656 -> 140699821331488
+	140699821328656 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (2, 3)
+mat2_sym_strides:         (3, 1)
+self            : [saved tensor]
+self_sym_sizes  :         (4, 2)
+self_sym_strides:         (1, 4)"]
+	140699821335856 -> 140699821328656
+	140699821335856 [label=TBackward0]
+	140699821328080 -> 140699821335856
+	140699821328080 [label="ThresholdBackwardBackward0
+--------------------------
+self     : [saved tensor]
+threshold:              0"]
+	140701014926736 -> 140699821328080
+	140701014926736 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (8, 4)
+mat2_sym_strides:         (4, 1)
+self            : [saved tensor]
+self_sym_sizes  :         (2, 8)
+self_sym_strides:         (8, 1)"]
+	140699821328752 -> 140701014926736
+	140699821328752 [label="ThresholdBackwardBackward0
+--------------------------
+self     : [saved tensor]
+threshold:              0"]
+	140699821329856 -> 140699821328752
+	140699821329856 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (5, 8)
+mat2_sym_strides:         (8, 1)
+self            : [saved tensor]
+self_sym_sizes  :         (2, 5)
+self_sym_strides:         (5, 1)"]
+	140699821342528 -> 140699821329856
+	140699821342528 [label="ThresholdBackwardBackward0
+--------------------------
+self     : [saved tensor]
+threshold:              0"]
+	140699821327888 -> 140699821342528
+	140699821327888 [label="LogSoftmaxBackwardDataBackward0
+-------------------------------
+dim        :              1
+grad_output: [saved tensor]
+output     : [saved tensor]"]
+	140699821134016 -> 140699821327888
+	140699821134016 [label="NllLossBackwardBackward0
+----------------------------------
+ignore_index: 18446744073709551516
+reduction   :                    1
+target      :       [saved tensor]
+weight      :                 None"]
+	140699821327936 -> 140699821134016
+	140699821327936 [label="LogSoftmaxBackward0
+----------------------
+dim   :              1
+result: [saved tensor]"]
+	140699821340752 -> 140699821327936
+	140699821340752 [label="ReluBackward0
+----------------------
+result: [saved tensor]"]
+	140699821328704 -> 140699821340752
+	140699821328704 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (8, 5)
+mat2_sym_strides:         (1, 8)
+self            : [saved tensor]
+self_sym_sizes  :         (2, 8)
+self_sym_strides:         (8, 1)"]
+	140699821331776 -> 140699821328704
+	140699821331776 [label="ReluBackward0
+----------------------
+result: [saved tensor]"]
+	140699821329280 -> 140699821331776
+	140699821329280 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (4, 8)
+mat2_sym_strides:         (1, 4)
+self            : [saved tensor]
+self_sym_sizes  :         (2, 4)
+self_sym_strides:         (4, 1)"]
+	140699821329520 -> 140699821329280
+	140699821329520 [label="ReluBackward0
+----------------------
+result: [saved tensor]"]
+	140699821342096 -> 140699821329520
+	140699821342096 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (3, 4)
+mat2_sym_strides:         (1, 3)
+self            : [saved tensor]
+self_sym_sizes  :         (2, 3)
+self_sym_strides:         (3, 1)"]
+	140699821335040 -> 140699821342096
+	140703195922048 [label="
+ (2, 3)" fillcolor=lightblue]
+	140703195922048 -> 140699821335040
+	140699821335040 [label=AccumulateGrad]
+	140699821330768 -> 140699821342096
+	140699821330768 [label=TBackward0]
+	140699821334704 -> 140699821330768
+	140699821334704 [label="ViewBackward0
+---------------------
+self_sym_sizes: (12,)"]
+	140699821341904 -> 140699821334704
+	140699821341904 [label="SplitWithSizesBackward0
+----------------------------
+dim           :            0
+self_sym_sizes:        (84,)
+split_sizes   : (12, 32, 40)"]
+	140699821337056 -> 140699821341904
+	140699821337056 [label="SqueezeBackward0
+---------------------
+self_sym_sizes: (84,)"]
+	140699821330672 -> 140699821337056
+	140699821329136 -> 140699821329280
+	140699821329136 [label=TBackward0]
+	140700236457456 -> 140699821329136
+	140700236457456 [label="ViewBackward0
+---------------------
+self_sym_sizes: (32,)"]
+	140699821341904 -> 140700236457456
+	140699821330912 -> 140699821328704
+	140699821330912 [label=TBackward0]
+	140699821333648 -> 140699821330912
+	140699821333648 [label="ViewBackward0
+---------------------
+self_sym_sizes: (40,)"]
+	140699821341904 -> 140699821333648
+	140699821327936 -> 140699821327888
+	140699821340752 -> 140699821342528
+	140699821342000 -> 140699821329856
+	140699821342000 [label=TBackward0]
+	140699821330912 -> 140699821342000
+	140699821331776 -> 140699821328752
+	140699821328464 -> 140701014926736
+	140699821328464 [label=TBackward0]
+	140699821329136 -> 140699821328464
+	140699821329520 -> 140699821328080
+	140699821335040 -> 140699821328656
+	140699821339504 -> 140699821335136
+	140699821339504 [label="ViewBackward0
+----------------------
+self_sym_sizes: (8, 4)"]
+	140699821332064 -> 140699821339504
+	140699821332064 [label=TBackward0]
+	140699821326688 -> 140699821332064
+	140699821326688 [label=TBackward0]
+	140699821329904 -> 140699821326688
+	140699821329904 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (2, 4)
+mat2_sym_strides:         (4, 1)
+self            : [saved tensor]
+self_sym_sizes  :         (8, 2)
+self_sym_strides:         (1, 8)"]
+	140699821339264 -> 140699821329904
+	140699821339264 [label=TBackward0]
+	140699821328752 -> 140699821339264
+	140699821329520 -> 140699821329904
+	140699821335328 -> 140699821335136
+	140699821335328 [label="ViewBackward0
+----------------------
+self_sym_sizes: (5, 8)"]
+	140699821339408 -> 140699821335328
+	140699821339408 [label=TBackward0]
+	140699821327552 -> 140699821339408
+	140699821327552 [label=TBackward0]
+	140699821337776 -> 140699821327552
+	140699821337776 [label="MmBackward0
+--------------------------------
+mat2            : [saved tensor]
+mat2_sym_sizes  :         (2, 8)
+mat2_sym_strides:         (8, 1)
+self            : [saved tensor]
+self_sym_sizes  :         (5, 2)
+self_sym_strides:         (1, 5)"]
+	140699821328608 -> 140699821337776
+	140699821328608 [label=TBackward0]
+	140699821342528 -> 140699821328608
+	140699821331776 -> 140699821337776
+	140699821341472 -> 140700236432480
+}
