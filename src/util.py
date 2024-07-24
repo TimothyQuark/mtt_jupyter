@@ -5,6 +5,7 @@ from torch import Tensor
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 
 def visualize_imgs(images: Tensor | List[Tensor]) -> None:
@@ -106,3 +107,5 @@ def view_tensor_img(tensor):
     plt.axis('off')  # Turn off axis
     plt.show()
 
+def get_time():
+    return str(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()))
