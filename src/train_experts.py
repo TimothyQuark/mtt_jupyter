@@ -233,8 +233,7 @@ def main():
 
     print(
         """Script for generating expert trajectories for Dataset Distillation
-        by Matching Training Trajectories. This script does the same as the Jupyter
-        Notebook, but is faster and can be run via CLI."""
+        by Matching Training Trajectories."""
     )
     print_line()
 
@@ -275,10 +274,12 @@ def main():
         "optimizer": "SGD",  # Optimizer to use for training
     }
 
+    # Load dataset, and add relevant info the hparams
     train_dataset, test_dataset, hparams = load_datasets(settings, hparams)
     dataset_info(train_dataset)
     print_line()
 
+    # Print settings after relevant info appended to hparams
     print("User settings:")
     pprint.pprint(settings)
     print("Hyperparameters:")

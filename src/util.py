@@ -4,6 +4,7 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def visualize_imgs(images: Tensor | List[Tensor]) -> None:
@@ -77,3 +78,31 @@ def set_device(device=None):
 
 def create_tqdm_bar(iterable, desc):
     return tqdm(enumerate(iterable), total=len(iterable), ncols=150, desc=desc)
+
+
+def get_random_imgs(dataset, indices, n):
+    """
+    Get random images from a class. Arguments are a dataset, the indices of the dataset
+    to randomly sample from, and number of samples to return. Returns n samples (no repetitions)
+    """
+
+    # Get random indices array
+    idx_shuffle = np.random.permutation(indices)[:n]
+
+    # Append the images to a list, then convert to a 4D tensor
+    img_tensor = [dataset[idx][0] for idx in idx_shuffle]
+    img_tensor = torch.stack(img_tensor)
+
+    return img_tensor
+
+def view_tensor_img(tensor):
+    """
+    View a 3D tensor as an image. Input is of shape [C, H, W], which is reshaped to visualize
+    with PLT
+    """
+
+    img = tensor.permute(1, 2, 0).numpy()
+    plt.imshow(img)
+    plt.axis('off')  # Turn off axis
+    plt.show()
+

@@ -126,7 +126,7 @@ def load_datasets(settings, hparams):
             transform = transforms.Compose(
                 [
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=mean, std=std),
+                    # transforms.Normalize(mean=mean, std=std),
                 ]
             )
 
@@ -150,7 +150,9 @@ def load_datasets(settings, hparams):
 
         print("Appending hparams with additional parameters")
         hparams["img_shape"] = (3, 32, 32)
-        hparams["out_channels"] = 100
+        hparams["out_channels"] = 100 # This is number of CIFAR classes
+        hparams["class_names"] = train_dataset.classes # Names of classes
+        hparams["class_map"] = {x: x for x in range(hparams["out_channels"])} # Seems dumb, but only because CIFAR100 already ordered
 
     else:
         raise ValueError(
